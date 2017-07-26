@@ -2,7 +2,7 @@
 #
 # Packman.vim is a simple Vim plugin/package manager.
 #
-# Version: 20170505
+# Version: 20170726
 # http://code.arp242.net/packman.vim
 #
 # Copyright © 2017 Martin Tournoij <martin@arp242.net>
@@ -20,7 +20,7 @@ usage() {
 	echo "    version    Show last commit for all installed plugins."
 	echo "    install    Install new plugins; don't update existing."
 	echo "    update     Update existing plugins; don't update new."
-	echo "    orphan     Remove 'orphaned' packages no longer in the config."
+	echo "    orphans    Remove 'orphaned' packages no longer in the config."
 	echo
 	echo "If no mode is given we will install new plugins and update existing."
 }
@@ -31,75 +31,92 @@ rp() {
 	readlink -f "$1"
 }
 
+make_helptags() {
+	[ -d doc ] || return
+	vim -u NONE --noplugins +':helptags doc' +:q >/dev/null 2>&1 &
+}
+
 # Filter commented out repos
 filter_comments() {
-	local new_want=""
 	for repo in "$@"; do
 		[ $(echo "$repo" | head -c1) = "#" ] && continue
 		[ -z $(echo "$repo" | tr -d ' ') ] && continue
-		new_want=$(printf "$new_want\n$repo")
+		echo $repo
 	done
-	echo "$new_want"
+}
+
+prefix_with() {
+	local prefix=$1; shift
+	for repo in "$@"; do
+		echo "$prefix$repo"
+	done
 }
 
 # Show versions
 cmd_version() {
-	local mode=$1; shift
-	local want=$*
+	for dir in "$@"; do
+		local dir=$(echo "$dir" | tr -d ' ')
+		local pkg_dir=$(echo "$dir" | cut -d/ -f1)
+		local repo=$(echo "$dir" | cut -d/ -f2,3)
+		local plugin_name=$(basename "$repo")
+		local destdir="$pkg_dir/$plugin_name"
 
-	for repo in $want; do
-		local repo=$(echo "$repo" | tr -d ' ')
-		local dirname=$(echo "$repo" | cut -d/ -f2)
-
-		printf "%-5s -> %-30s %s" "$mode" "$repo"
-
-		if [ ! -e "$dirname" ]; then
+		printf "%-36s %s" "$dir"
+		if [ ! -e "$destdir" ]; then
 			echo "Not installed"
 		else
 			(
-				cd "$dirname"
+				cd "$destdir"
 				git log -n1 --date=short --format='%h %ad %s'
 			)
 		fi
 	done
 }
 
-# Find orphans
-find_orphans() {
-	local want=$*
-	local installed=$(find . -maxdepth 1 -a -type d)
-	local orphans=""
+cmd_orphans() {
+	local in_config=""
+	for dir in "$@"; do
+		local dir=$(echo "$dir" | tr -d ' ')
+		local pkg_dir=$(echo "$dir" | cut -d/ -f1)
+		local repo=$(echo "$dir" | cut -d/ -f2,3)
+		local plugin_name=$(basename "$repo")
+		local destdir="$pkg_dir/$plugin_name"
 
-	for repo in $installed; do
-		echo "$want" | grep -q ${repo#./} && continue
-		orphans=$(printf "$orphans\n$(rp "$repo")")
+		in_config=$(printf "$destdir\n$in_config")
 	done
-	echo "$orphans"
+
+	rm_orphans "$(find_orphans "$in_config")"
 }
 
-# Remove orphans
-rm_orphans() {
-	local orphans=$*
+find_orphans() {
+	local in_config="$@"
+	local installed="$(find . -maxdepth 2 -a -type d)"
+	for dir in $installed; do
+		echo "$in_config" | grep -q ${dir#./} && continue
+		echo $dir
+	done
+}
 
-	if [ $(printf "$orphans" | wc -l) -eq 0 ] ; then
+rm_orphans() {
+	if [ -z "$@" ]; then
 		echo "No orphans found."
 		return
 	fi
 
-	for repo in $orphans; do
+	for repo in $@; do
 		echo "  $repo"
 	done
-	printf "Remove the above directories? [y/N] "
+	printf "Remove these directories? [y/N] "
 	read answer
 	if [ "$answer" != "y" ]; then
 		echo "Okay then."
 		exit 0
 	fi
 
-	for repo in $orphans; do
+	for repo in $@; do
 		# Use -f for the git dir since that's write-protected by default.
 		rm -fr "$repo/.git"
-		rm -r "$repo"
+		rm -vr "$repo"
 	done
 }
 
@@ -107,39 +124,50 @@ rm_orphans() {
 # Second argument is the mode: "install", "update", or "" (empty) for both
 # All the rest are GitHub repos.
 cmd_install() {
-	local dir=$1; shift
 	local mode=$1; shift
-	local want=$*
+	local want="$*"
+
 	local total=$(echo "$want" | wc -l)
 	local i=0
+	for dir in $want; do
+		local dir=$(echo "$dir" | tr -d ' ')
+		local pkg_dir=$(echo "$dir" | cut -d/ -f1)
+		local repo=$(echo "$dir" | cut -d/ -f2,3)
+		local plugin_name=$(basename "$repo")
+		local destdir="$pkg_dir/$plugin_name"
 
-	for repo in $want; do
 		i=$(($i + 1))
-		repo=$(echo "$repo" | tr -d ' ')
-		dirname=$(echo "$repo" | cut -d/ -f2)
 
 		# Update existing
-		if [ -e "$dirname" ]; then
+		if [ -e "$destdir" ]; then
 			[ "$mode" = "install" ] && continue
-			printf "($i/$total) "
-			echo "updating '$dir/$dirname' from '$repo'"
-			(
-				cd "$dirname"
-				git pull --quiet
-				[ -d doc ] && vim -u NONE --noplugins +':helptags doc' +:q >/dev/null 2>&1 &
-			)
+			printf "%-8s" "($i/$total)"
+			echo "updating '$destdir' from '$repo'"
+			do_update
 		# Install new
 		else
 			[ "$mode" = "update" ] && continue
-			printf "($i/$total) "
-			echo "cloning '$repo' to '$dir/$dirname'"
-			git clone --quiet "git@github.com:$repo" "$dirname"
-			(
-				cd "$dirname"
-				[ -d doc ] && vim -u NONE --noplugins +':helptags doc' +:q >/dev/null 2>&1 &
-			)
+			printf "%-8s" "($i/$total)"
+			echo "cloning '$repo' to '$destdir'"
+			do_install
 		fi
 	done
+}
+
+do_update() {
+	(
+		cd "$destdir"
+		git pull --quiet
+		make_helptags
+	)
+}
+
+do_install() {
+	git clone --quiet "git@github.com:$repo" "$destdir"
+	(
+		cd "$destdir"
+		make_helptags
+	)
 }
 
 if [ -f "$HOME/.vim/packman.conf" ]; then
@@ -158,29 +186,16 @@ cd "$install_dir"
 
 want_opt=$(filter_comments $want_opt)
 want_start=$(filter_comments $want_start)
+want_combined="$(prefix_with opt/ $want_opt)
+$(prefix_with start/ $want_start)"
+
 mode=${1:-}
 case "$mode" in
-	version)
-		(cd opt   && cmd_version opt   $want_opt)
-		(cd start && cmd_version start $want_start)
-		;;
-	install)
-		(cd opt   && cmd_install opt   install $want_opt)
-		(cd start && cmd_install start install $want_start)
-		;;
-	update)
-		(cd opt   && cmd_install opt   update $want_opt)
-		(cd start && cmd_install start update $want_start)
-		;;
-	orphan)
-		orphans=$(cd opt   && find_orphans $want_opt)
-		orphans=${orphans}$(cd start && find_orphans $want_start)
-		rm_orphans $orphans
-		;;
-	"")
-		(cd opt   && cmd_install opt   "" $want_opt)
-		(cd start && cmd_install start "" $want_start)
-		;;
+	version) cmd_version $want_combined ;;
+	orphans) cmd_orphans $want_combined ;;
+	install) cmd_install install $want_combined ;;
+	update)  cmd_install update  $want_combined ;;
+	"")      cmd_install ""      $want_combined ;;
 	*)
 		usage
 		exit 1
