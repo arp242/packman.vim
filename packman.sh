@@ -32,8 +32,7 @@ rp() {
 }
 
 make_helptags() {
-	[ -d doc ] || return
-	vim -u NONE --noplugins +':helptags doc' +:q >/dev/null 2>&1 &
+	vim -u NONE --noplugins +':helptags ALL' +:q >/dev/null 2>&1
 }
 
 # Filter commented out repos
@@ -86,6 +85,7 @@ cmd_orphans() {
 	done
 
 	rm_orphans "$(find_orphans "$in_config")"
+	make_helptags
 }
 
 find_orphans() {
@@ -152,13 +152,13 @@ cmd_install() {
 			do_install
 		fi
 	done
+	make_helptags
 }
 
 do_update() {
 	(
 		cd "$destdir"
 		git pull --quiet || return
-		make_helptags
 	)
 }
 
@@ -166,7 +166,6 @@ do_install() {
 	git clone --quiet "git@github.com:$repo" "$destdir" || return
 	(
 		cd "$destdir"
-		make_helptags
 	)
 }
 
