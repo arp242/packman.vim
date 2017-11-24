@@ -2,7 +2,7 @@
 #
 # Packman.vim is a simple Vim plugin/package manager.
 #
-# Version: 20170726
+# Version: 20170924
 # http://code.arp242.net/packman.vim
 #
 # Copyright © 2017 Martin Tournoij <martin@arp242.net>
@@ -67,7 +67,7 @@ cmd_version() {
 		else
 			(
 				cd "$destdir"
-				git log -n1 --date=short --format='%h %ad %s'
+				git log -n1 --date=short --format='%h %ad %s' || :
 			)
 		fi
 	done
@@ -157,13 +157,13 @@ cmd_install() {
 do_update() {
 	(
 		cd "$destdir"
-		git pull --quiet
+		git pull --quiet || return
 		make_helptags
 	)
 }
 
 do_install() {
-	git clone --quiet "git@github.com:$repo" "$destdir"
+	git clone --quiet "git@github.com:$repo" "$destdir" || return
 	(
 		cd "$destdir"
 		make_helptags
