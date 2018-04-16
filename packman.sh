@@ -2,10 +2,10 @@
 #
 # Packman.vim is a simple Vim plugin/package manager.
 #
-# Version: 20170924
+# Version: 20180416
 # http://code.arp242.net/packman.vim
 #
-# Copyright © 2017 Martin Tournoij <martin@arp242.net>
+# Copyright © 2017-2018 Martin Tournoij <martin@arp242.net>
 # See the bottom of this file for the full copyright.
 # 
 
@@ -25,22 +25,16 @@ usage() {
 	echo "If no mode is given we will install new plugins and update existing."
 }
 
-rp() {
-	# TODO: readlink -f doesn't always work on all platforms (specifically, I
-	# think it won't work on OSX).
-	readlink -f "$1"
-}
-
 make_helptags() {
-	vim -u NONE --noplugins +':helptags ALL' +:q >/dev/null 2>&1
+	vim -u NONE +':helptags ALL' +:q >/dev/null 2>&1 ||:
 }
 
-# Filter commented out repos
+# Filter commented out repos.
 filter_comments() {
 	for repo in "$@"; do
 		[ $(echo "$repo" | head -c1) = "#" ] && continue
 		[ -z $(echo "$repo" | tr -d ' ') ] && continue
-		echo $repo
+		echo ${repo%#*}
 	done
 }
 
@@ -51,7 +45,7 @@ prefix_with() {
 	done
 }
 
-# Show versions
+# Show versions.
 cmd_version() {
 	for dir in "$@"; do
 		local dir=$(echo "$dir" | tr -d ' ')
@@ -64,10 +58,7 @@ cmd_version() {
 		if [ ! -e "$destdir" ]; then
 			echo "Not installed"
 		else
-			(
-				cd "$destdir"
-				git log -n1 --date=short --format='%h %ad %s' || :
-			)
+			git -C "$destdir" log -n1 --date=short --format='%h %ad %s' ||:
 		fi
 	done
 }
@@ -85,7 +76,6 @@ cmd_orphans() {
 	done
 
 	rm_orphans "$(find_orphans "$in_config")"
-	make_helptags
 }
 
 find_orphans() {
@@ -129,44 +119,40 @@ cmd_install() {
 
 	local total=$(echo "$want" | wc -l)
 	local i=0
+	local ret=0
+
 	for dir in $want; do
 		local dir=$(echo "$dir" | tr -d ' ')
 		local pkg_dir=$(echo "$dir" | cut -d/ -f1)
 		local repo=$(echo "$dir" | cut -d/ -f2,3)
 		local plugin_name=$(basename "$repo")
 		local destdir="$pkg_dir/$plugin_name"
-
-		i=$(($i + 1))
+		local i=$(($i + 1))
 
 		# Update existing
 		if [ -e "$destdir" ]; then
 			[ "$mode" = "install" ] && continue
 			printf "%-8s" "($i/$total)"
 			echo "updating '$destdir' from '$repo'"
-			do_update
+			do_update || ret=$?
 		# Install new
 		else
 			[ "$mode" = "update" ] && continue
 			printf "%-8s" "($i/$total)"
 			echo "cloning '$repo' to '$destdir'"
-			do_install
+			do_install || ret=$?
 		fi
 	done
 	make_helptags
+	return $ret
 }
 
 do_update() {
-	(
-		cd "$destdir"
-		git pull --quiet || return
-	)
+	git -C "$destdir" pull --quiet || return $?
 }
 
 do_install() {
-	git clone --quiet "git@github.com:$repo" "$destdir" || return
-	(
-		cd "$destdir"
-	)
+	git clone --quiet "git@github.com:$repo" "$destdir" || return $?
 }
 
 if [ -f "$HOME/.vim/packman.conf" ]; then
@@ -204,7 +190,7 @@ esac
 
 # The MIT License (MIT) 
 # 
-# Copyright © 2017 Martin Tournoij
+# Copyright © 2018 Martin Tournoij
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the “Software”), to
