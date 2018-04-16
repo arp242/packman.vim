@@ -22,7 +22,7 @@ usage() {
 	echo "    update     Update existing plugins; don't update new."
 	echo "    orphans    Remove 'orphaned' packages no longer in the config."
 	echo
-	echo "If no mode is given we will install new plugins and update existing."
+	echo "If no mode is given it will install new plugins and update existing plugins."
 }
 
 make_helptags() {
