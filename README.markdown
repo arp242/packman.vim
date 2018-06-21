@@ -28,7 +28,7 @@ Here's what `./packman.sh -v` will tell you:
 	mode can be:
 		version    Show last commit for all installed plugins.
 		install    Install new plugins; don't update existing.
-		update     Update existing plugins; don't update new.
+		update     Update existing plugins; don't install new.
 		orphans    Remove 'orphaned' packages no longer in the config.
 
 	If no mode is given it will install new plugins and update existing plugins.

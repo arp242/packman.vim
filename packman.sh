@@ -19,7 +19,7 @@ usage() {
 	echo "mode can be:"
 	echo "    version    Show last commit for all installed plugins."
 	echo "    install    Install new plugins; don't update existing."
-	echo "    update     Update existing plugins; don't update new."
+	echo "    update     Update existing plugins; don't install new."
 	echo "    orphans    Remove 'orphaned' packages no longer in the config."
 	echo
 	echo "If no mode is given it will install new plugins and update existing plugins."
