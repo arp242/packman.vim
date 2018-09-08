@@ -7,7 +7,7 @@
 #
 # Copyright © 2017-2018 Martin Tournoij <martin@arp242.net>
 # See the bottom of this file for the full copyright.
-# 
+#
 
 set -euC
 IFS="
@@ -26,7 +26,7 @@ usage() {
 }
 
 make_helptags() {
-	vim -u NONE +':helptags ALL' +:q >/dev/null 2>&1 ||:
+	vim -u NONE +':helptags ALL' +:q >/dev/null 2>&1 || :
 }
 
 # Filter commented out repos.
@@ -39,7 +39,8 @@ filter_comments() {
 }
 
 prefix_with() {
-	local prefix=$1; shift
+	local prefix=$1
+	shift
 	for repo in "$@"; do
 		echo "$prefix$repo"
 	done
@@ -58,7 +59,7 @@ cmd_version() {
 		if [ ! -e "$destdir" ]; then
 			echo "Not installed"
 		else
-			git -C "$destdir" log -n1 --date=short --format='%h %ad %s' ||:
+			git -C "$destdir" log -n1 --date=short --format='%h %ad %s' || :
 		fi
 	done
 }
@@ -114,7 +115,8 @@ rm_orphans() {
 # Second argument is the mode: "install", "update", or "" (empty) for both
 # All the rest are GitHub repos.
 cmd_install() {
-	local mode=$1; shift
+	local mode=$1
+	shift
 	local want="$*"
 
 	local total=$(echo "$want" | wc -l)
@@ -127,7 +129,7 @@ cmd_install() {
 		local repo=$(echo "$dir" | cut -d/ -f2,3)
 		local plugin_name=$(basename "$repo")
 		local destdir="$pkg_dir/$plugin_name"
-		local i=$(($i + 1))
+		local i=$((i + 1))
 
 		# Update existing
 		if [ -e "$destdir" ]; then
@@ -176,32 +178,31 @@ $(prefix_with start/ $want_start)"
 
 mode=${1:-}
 case "$mode" in
-	version) cmd_version $want_combined ;;
-	orphans) cmd_orphans $want_combined ;;
-	install) cmd_install install $want_combined ;;
-	update)  cmd_install update  $want_combined ;;
-	"")      cmd_install ""      $want_combined ;;
+	version) cmd_version         $want_combined   ;;
+	orphans) cmd_orphans         $want_combined   ;;
+	install) cmd_install install $want_combined   ;;
+	update)  cmd_install update  $want_combined   ;;
+	"")      cmd_install ""      $want_combined   ;;
 	*)
 		usage
 		exit 1
 		;;
 esac
 
-
-# The MIT License (MIT) 
-# 
+# The MIT License (MIT)
+#
 # Copyright © 2018 Martin Tournoij
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the “Software”), to
 # deal in the Software without restriction, including without limitation the
 # rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
 # sell copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # The software is provided "as is", without warranty of any kind, express or
 # implied, including but not limited to the warranties of merchantability,
 # fitness for a particular purpose and noninfringement. In no event shall the
