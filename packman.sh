@@ -2,10 +2,10 @@
 #
 # Packman.vim is a simple Vim plugin/package manager.
 #
-# Version: 20180416
+# Version: 20190307
 # http://code.arp242.net/packman.vim
 #
-# Copyright © 2017-2018 Martin Tournoij <martin@arp242.net>
+# Copyright © 2017-2019 Martin Tournoij <martin@arp242.net>
 # See the bottom of this file for the full copyright.
 #
 
@@ -171,8 +171,8 @@ mkdir -p "$install_dir/start"
 mkdir -p "$install_dir/opt"
 cd "$install_dir"
 
-want_opt=$(filter_comments $want_opt)
-want_start=$(filter_comments $want_start)
+want_opt=$(filter_comments ${want_opt:-})
+want_start=$(filter_comments ${want_start:-})
 want_combined="$(prefix_with opt/ $want_opt)
 $(prefix_with start/ $want_start)"
 
@@ -191,7 +191,7 @@ esac
 
 # The MIT License (MIT)
 #
-# Copyright © 2018 Martin Tournoij
+# Copyright © 2017-2019 Martin Tournoij <martin@arp242.net>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the “Software”), to
