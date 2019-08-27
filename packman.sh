@@ -81,11 +81,20 @@ cmd_orphans() {
 
 find_orphans() {
 	local in_config="$@"
-	local installed="$(find . -maxdepth 2 -a -type d)"
-	for dir in $installed; do
-		echo "$in_config" | grep -q ${dir#./} && continue
-		echo $dir
-	done
+	[ -d start ] && (
+		local installed="$(find start -maxdepth 1 -a -type d)"
+		for dir in $installed; do
+			echo "$in_config" | grep -q ${dir#./} && continue
+			echo $dir
+		done
+	)
+	[ -d opt ] && (
+		local installed="$(find opt -maxdepth 1 -a -type d)"
+		for dir in $installed; do
+			echo "$in_config" | grep -q ${dir#./} && continue
+			echo $dir
+		done
+	)
 }
 
 rm_orphans() {
